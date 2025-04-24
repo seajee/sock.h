@@ -1,0 +1,43 @@
+#include <stdio.h>
+#include <errno.h>
+
+#define SOCK_IMPLEMENTATION
+#include "sock.h"
+
+int main(void) {
+    char *err = "None";
+
+    Sock *sock = sock_create(SOCK_IPV4, SOCK_TCP);
+    if (sock == NULL) { err = "create"; goto defer; }
+    printf("create\n");
+
+    SockAddr addr = sock_addr("0.0.0.0", 6969);
+    if (!sock_bind(sock, addr)) { err = "bind"; goto defer; }
+    printf("bind\n");
+    if (!sock_listen(sock, 16)) { err = "listen"; goto defer; }
+    printf("listen\n");
+
+    Sock *client = sock_accept(sock);
+    if (client == NULL) { err = "accept"; goto defer; }
+    printf("accept\n");
+
+    const char *msg = "Hello from server!";
+    char buf[128];
+    memset(buf, 0, sizeof(buf));
+
+    sock_send(client, msg, strlen(msg));
+    printf("send\n");
+    sock_recv(client, buf, sizeof(buf));
+    printf("recv\n");
+    printf("%.*s\n", (int)sizeof(buf), buf);
+
+    sock_close(client);
+    printf("close\n");
+
+defer:
+    sock_close(sock);
+    printf("close\n");
+    fprintf(stderr, "ERROR: %s: %s\n", err, strerror(errno));
+
+    return 0;
+}
