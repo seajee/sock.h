@@ -23,5 +23,7 @@ int main(void)
     printf("Received \"%.*s\" from %s:%d\n", (int)sizeof(buf), buf,
             server_addr.str, server_addr.port);
 
+    sock_close(sock);
+
     return 0;
 }
