@@ -1,4 +1,4 @@
-// sock - v1.0.2 - MIT License - https://github.com/seajee/sock.h
+// sock - v1.0.3 - MIT License - https://github.com/seajee/sock.h
 
 #ifndef SOCK_H_
 #define SOCK_H_
@@ -84,12 +84,12 @@ SockAddr sock_addr(const char *addr, int port)
 {
     SockAddr sa = {0};
 
-    if (inet_pton(AF_INET, addr, &sa.sockaddr) == 1) {
+    if (inet_pton(AF_INET, addr, &sa.ipv4.sin_addr) == 1) {
         sa.type = SOCK_IPV4;
         sa.len = sizeof(sa.ipv4);
         sa.ipv4.sin_family = AF_INET;
         sa.ipv4.sin_port = htons(port);
-    } else if (inet_pton(AF_INET6, addr, &sa.sockaddr) == 1) {
+    } else if (inet_pton(AF_INET6, addr, &sa.ipv6.sin6_addr) == 1) {
         sa.type = SOCK_IPV6;
         sa.len = sizeof(sa.ipv6);
         sa.ipv6.sin6_family = AF_INET6;
@@ -256,6 +256,7 @@ void sock_close(Sock *sock)
 /*
     Revision history:
 
+        1.0.3 (2025-04-25) Fix incorrect usage of inet_pton
         1.0.2 (2025-04-25) Fix sock_recvfrom not recognizing the address
                            family
         1.0.1 (2025-04-25) Handle different kind of sockaddr with a union
