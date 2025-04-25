@@ -169,7 +169,8 @@ int main(void)
         }
         pthread_detach(thread);
 
-        printf("INFO: New client connected\n");
+        printf("INFO: New client connected from %s:%d\n", client->addr.str,
+                client->addr.port);
     }
 
     sock_close(server);

@@ -1,5 +1,7 @@
 hello_server
 hello_client
+hello_server_v6
+hello_client_v6
 chat_server
 chat_client
 udp_server

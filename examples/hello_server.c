@@ -4,7 +4,8 @@
 #define SOCK_IMPLEMENTATION
 #include "sock.h"
 
-int main(void) {
+int main(void)
+{
     char *err = "None";
 
     Sock *sock = sock_create(SOCK_IPV4, SOCK_TCP);

@@ -1,10 +1,11 @@
-// sock - v1.0.3 - MIT License - https://github.com/seajee/sock.h
+// sock - v1.1.0 - MIT License - https://github.com/seajee/sock.h
 
 #ifndef SOCK_H_
 #define SOCK_H_
 
 #include <arpa/inet.h>
 #include <assert.h>
+#include <errno.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -76,6 +77,9 @@ ssize_t sock_recvfrom(Sock *sock, void *buf, size_t size, SockAddr *addr);
 // Close a socket
 void sock_close(Sock *sock);
 
+// Log last errors to stderr
+void sock_log_errors(void);
+
 #endif // SOCK_H_
 
 #ifdef SOCK_IMPLEMENTATION
@@ -111,7 +115,6 @@ Sock *sock_create(SockAddrType domain, SockType type)
     if (sock == NULL) {
         return NULL;
     }
-
     memset(sock, 0, sizeof(*sock));
 
     sock->type = type;
@@ -177,11 +180,36 @@ Sock *sock_accept(Sock *sock)
     if (res == NULL) {
         return NULL;
     }
-
     memset(res, 0, sizeof(*res));
 
     res->type = sock->type;
     res->fd = fd;
+
+    SockAddr *addr = &res->addr;
+    addr->len = sizeof(addr->sockaddr);
+    getpeername(res->fd, &addr->sockaddr, &addr->len);
+    // TODO: This is duplicated code from sock_recvfrom
+    switch (addr->sockaddr.sa_family) {
+        case AF_INET: {
+            struct sockaddr_in *ipv4 = &addr->ipv4;
+            addr->type = SOCK_IPV4;
+            addr->port = ntohs(ipv4->sin_port);
+            addr->len = sizeof(*ipv4);
+            inet_ntop(AF_INET, &ipv4->sin_addr, addr->str, sizeof(addr->str));
+        } break;
+
+        case AF_INET6: {
+            struct sockaddr_in6 *ipv6 = &addr->ipv6;
+            addr->type = SOCK_IPV6;
+            addr->port = ntohs(ipv6->sin6_port);
+            addr->len = sizeof(*ipv6);
+            inet_ntop(AF_INET6, &ipv6->sin6_addr, addr->str, sizeof(addr->str));
+        } break;
+
+        default: {
+            assert(false && "Unreachable address family");
+        } break;
+    }
 
     return res;
 }
@@ -191,6 +219,8 @@ bool sock_connect(Sock *sock, SockAddr addr)
     if (connect(sock->fd, &addr.sockaddr, addr.len) < 0) {
         return false;
     }
+
+    sock->addr = addr;
 
     return true;
 }
@@ -251,11 +281,19 @@ void sock_close(Sock *sock)
     free(sock);
 }
 
+void sock_log_errors(void)
+{
+    fprintf(stderr, "SOCK ERROR: %s\n", strerror(errno));
+}
+
 #endif // SOCK_IMPLEMENTATION
 
 /*
     Revision history:
 
+        1.1.0 (2025-04-26) New sock_log_errors function
+                           Fill new Sock's SockAddr after a sock_accept
+                           Save remove SockAddr in Sock in sock_connect
         1.0.3 (2025-04-25) Fix incorrect usage of inet_pton
         1.0.2 (2025-04-25) Fix sock_recvfrom not recognizing the address
                            family
