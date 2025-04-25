@@ -1,3 +1,5 @@
+// sock - v1.0.0 - MIT License - https://github.com/seajee/sock.h
+
 #ifndef SOCK_H_
 #define SOCK_H_
 
@@ -19,11 +21,11 @@ typedef enum {
 } SockAddrType;
 
 typedef struct {
-    SockAddrType type;
-    int port;
+    SockAddrType type;                // Address type
+    int port;                         // Address port
+    char str[SOCK_ADDR_STR_CAPACITY]; // String representation of the address
     struct sockaddr sockaddr;
     socklen_t len;
-    char str[SOCK_ADDR_STR_CAPACITY];
 } SockAddr;
 
 typedef enum {
@@ -32,22 +34,42 @@ typedef enum {
 } SockType;
 
 typedef struct {
-    SockType type;
-    SockAddr addr;
-    int fd;
+    SockType type;  // Socket type
+    SockAddr addr;  // Socket address
+    int fd;         // File descriptor
 } Sock;
 
+// Create a SockAddr structure from primitives
 SockAddr sock_addr(const char *addr, int port);
 
+// Create a socket with the corresponding domain and type
 Sock *sock_create(SockAddrType domain, SockType type);
+
+// Bind a socket to a specific address
 bool sock_bind(Sock *sock, SockAddr addr);
+
+// Make the socket listen to incoming connections
 bool sock_listen(Sock *sock, int backlog);
+
+// Accept connections from a socket
 Sock *sock_accept(Sock *sock);
+
+// Connect a socket to a specific address
 bool sock_connect(Sock *sock, SockAddr addr);
+
+// Send data through a socket
 ssize_t sock_send(Sock *sock, const void *buf, size_t size);
+
+// Receive data from a socket
 ssize_t sock_recv(Sock *sock, void *buf, size_t size);
+
+// Send data through a socket in `connectionless` mode
 ssize_t sock_sendto(Sock *sock, const void *buf, size_t size, SockAddr addr);
+
+// Receive data from a socket in `connectionless` mode
 ssize_t sock_recvfrom(Sock *sock, void *buf, size_t size, SockAddr *addr);
+
+// Close a socket
 void sock_close(Sock *sock);
 
 #endif // SOCK_H_
@@ -223,3 +245,33 @@ void sock_close(Sock *sock)
 }
 
 #endif // SOCK_IMPLEMENTATION
+
+/*
+    Revision history:
+
+        1.0.0 (2025-04-25) Initial release
+*/
+
+/*
+ * MIT License
+ * 
+ * Copyright (c) 2025 seajee
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS IN THE SOFTWARE.
+ */
