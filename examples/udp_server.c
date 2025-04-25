@@ -1,4 +1,7 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 #define SOCK_IMPLEMENTATION
 #include "sock.h"
@@ -11,25 +14,30 @@ int main(void)
         return 1;
     }
 
-    if (!sock_bind(server, sock_addr("0.0.0.0", 6969))) {
+    SockAddr server_addr = sock_addr("0.0.0.0", 6969);
+    if (!sock_bind(server, server_addr)) {
         perror("sock_bind");
         sock_close(server);
         return 1;
     }
 
+    printf("Server is listening on port %d...\n", server_addr.port);
+
     SockAddr client_addr;
-    char buf[128];
-    memset(buf, 0, sizeof(buf));
+    char buf[64];
 
-    sock_recvfrom(server, buf, sizeof(buf), &client_addr);
+    while (true) {
+        ssize_t rec = sock_recvfrom(server, buf, sizeof(buf), &client_addr);
+        if (rec < 0) {
+            perror("sock_recvfrom");
+            break;
+        }
 
-    printf("Received \"%.*s\" from %s:%d\n", (int)sizeof(buf), buf,
-            client_addr.str, client_addr.port);
-
-    const char *msg = "Hello from server!";
-    sock_sendto(server, msg, strlen(msg), client_addr);
+        buf[rec] = '\0';
+        printf("Received from %s:%d \"%s\"\n", client_addr.str,
+                client_addr.port, buf);
+    }
 
     sock_close(server);
-
     return 0;
 }
