@@ -24,7 +24,11 @@ typedef struct {
     SockAddrType type;                // Address type
     int port;                         // Address port
     char str[SOCK_ADDR_STR_CAPACITY]; // String representation of the address
-    struct sockaddr sockaddr;
+    union {
+        struct sockaddr sockaddr;
+        struct sockaddr_in ipv4;
+        struct sockaddr_in6 ipv6;
+    };
     socklen_t len;
 } SockAddr;
 
@@ -82,16 +86,14 @@ SockAddr sock_addr(const char *addr, int port)
 
     if (inet_pton(AF_INET, addr, &sa.sockaddr) == 1) {
         sa.type = SOCK_IPV4;
-        sa.len = sizeof(struct sockaddr_in);
-        struct sockaddr_in *in = (struct sockaddr_in*)&sa.sockaddr;
-        in->sin_family = AF_INET;
-        in->sin_port = htons(port);
+        sa.len = sizeof(sa.ipv4);
+        sa.ipv4.sin_family = AF_INET;
+        sa.ipv4.sin_port = htons(port);
     } else if (inet_pton(AF_INET6, addr, &sa.sockaddr) == 1) {
         sa.type = SOCK_IPV6;
-        sa.len = sizeof(struct sockaddr_in6);
-        struct sockaddr_in6 *in6 = (struct sockaddr_in6*)&sa.sockaddr;
-        in6->sin6_family = AF_INET6;
-        in6->sin6_port = htons(port);
+        sa.len = sizeof(sa.ipv6);
+        sa.ipv6.sin6_family = AF_INET6;
+        sa.ipv6.sin6_port = htons(port);
     } else {
         sa.type = SOCK_ADDR_INVALID;
         return sa;
@@ -215,22 +217,23 @@ ssize_t sock_recvfrom(Sock *sock, void *buf, size_t size, SockAddr *addr)
 
     switch (addr->sockaddr.sa_family) {
         case AF_INET: {
-            struct sockaddr_in *sa = (struct sockaddr_in*)&addr->sockaddr;
+            struct sockaddr_in *ipv4 = &addr->ipv4;
             addr->type = SOCK_IPV4;
-            addr->port = ntohs(sa->sin_port);
-            addr->len = sizeof(*sa);
-            inet_ntop(AF_INET, &sa->sin_addr, addr->str, sizeof(addr->str));
+            addr->port = ntohs(ipv4->sin_port);
+            addr->len = sizeof(*ipv4);
+            inet_ntop(AF_INET, &ipv4->sin_addr, addr->str, sizeof(addr->str));
         } break;
 
         case AF_INET6: {
-            struct sockaddr_in6 *sa = (struct sockaddr_in6*)&addr->sockaddr;
+            struct sockaddr_in6 *ipv6 = &addr->ipv6;
             addr->type = SOCK_IPV6;
-            addr->port = ntohs(sa->sin6_port);
-            addr->len = sizeof(*sa);
-            inet_ntop(AF_INET6, &sa->sin6_addr, addr->str, sizeof(addr->str));
+            addr->port = ntohs(ipv6->sin6_port);
+            addr->len = sizeof(*ipv6);
+            inet_ntop(AF_INET6, &ipv6->sin6_addr, addr->str, sizeof(addr->str));
         } break;
 
         default: {
+            // TODO: Sometimes this assertion hits because sa_family == 64
             assert(false && "Unsupported address family");
         } break;
     }
@@ -249,6 +252,7 @@ void sock_close(Sock *sock)
 /*
     Revision history:
 
+        1.0.1 (2025-04-25) Handle different kind of sockaddr with a union
         1.0.0 (2025-04-25) Initial release
 */
 
