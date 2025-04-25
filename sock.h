@@ -1,4 +1,4 @@
-// sock - v1.0.0 - MIT License - https://github.com/seajee/sock.h
+// sock - v1.0.2 - MIT License - https://github.com/seajee/sock.h
 
 #ifndef SOCK_H_
 #define SOCK_H_
@@ -213,7 +213,12 @@ ssize_t sock_sendto(Sock *sock, const void *buf, size_t size, SockAddr addr)
 ssize_t sock_recvfrom(Sock *sock, void *buf, size_t size, SockAddr *addr)
 {
     ssize_t res = recvfrom(sock->fd, buf, size, 0, &addr->sockaddr,
-                           &addr->len);
+                           &sock->addr.len);
+    if (res < 0) {
+        return res;
+    }
+
+    printf("Received sa_family: %d\n", addr->sockaddr.sa_family);
 
     switch (addr->sockaddr.sa_family) {
         case AF_INET: {
@@ -233,8 +238,7 @@ ssize_t sock_recvfrom(Sock *sock, void *buf, size_t size, SockAddr *addr)
         } break;
 
         default: {
-            // TODO: Sometimes this assertion hits because sa_family == 64
-            assert(false && "Unsupported address family");
+            assert(false && "Unreachable address family");
         } break;
     }
 
@@ -252,6 +256,8 @@ void sock_close(Sock *sock)
 /*
     Revision history:
 
+        1.0.2 (2025-04-25) Fix sock_recvfrom not recognizing the address
+                           family
         1.0.1 (2025-04-25) Handle different kind of sockaddr with a union
         1.0.0 (2025-04-25) Initial release
 */
