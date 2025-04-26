@@ -114,7 +114,7 @@ disconnect:
 
 int main(void)
 {
-    Sock *server = sock_create(SOCK_IPV4, SOCK_TCP);
+    Sock *server = sock(SOCK_IPV4, SOCK_TCP);
     if (server == NULL) {
         fprintf(stderr, "ERROR: Could not create socket\n");
         return EXIT_FAILURE;

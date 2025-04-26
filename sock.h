@@ -1,4 +1,4 @@
-// sock - v1.3.0 - MIT License - https://github.com/seajee/sock.h
+// sock - v1.4.0 - MIT License - https://github.com/seajee/sock.h
 
 #ifndef SOCK_H_
 #define SOCK_H_
@@ -47,7 +47,7 @@ typedef struct {
 SockAddr sock_addr(const char *addr, int port);
 
 // Create a socket with the corresponding domain and type
-Sock *sock_create(SockAddrType domain, SockType type);
+Sock *sock(SockAddrType domain, SockType type);
 
 // Bind a socket to a specific address
 bool sock_bind(Sock *sock, SockAddr addr);
@@ -129,7 +129,7 @@ SockAddr sock_addr(const char *addr, int port)
     return sa;
 }
 
-Sock *sock_create(SockAddrType domain, SockType type)
+Sock *sock(SockAddrType domain, SockType type)
 {
     Sock *sock = malloc(sizeof(*sock));
     if (sock == NULL) {
@@ -309,6 +309,7 @@ void sock_log_error(void)
 /*
     Revision history:
 
+        1.4.0 (2025-04-26) Renamed sock_create() to sock()
         1.3.0 (2025-04-26) Renamed sock_log_errors to sock_log_error
         1.2.0 (2025-04-26) sock_addr can now resolve hostnames
         1.1.0 (2025-04-26) New sock_log_errors function

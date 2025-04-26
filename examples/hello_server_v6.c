@@ -7,14 +7,14 @@ int main(void)
 {
     bool err = false;
 
-    Sock *sock = sock_create(SOCK_IPV6, SOCK_TCP);
-    if (sock == NULL) { err = true; goto close; }
+    Sock *server = sock(SOCK_IPV6, SOCK_TCP);
+    if (server == NULL) { err = true; goto close; }
 
     SockAddr addr = sock_addr("::", 6969);
-    if (!sock_bind(sock, addr)) { err = true; goto close; }
-    if (!sock_listen(sock, 16)) { err = true; goto close; }
+    if (!sock_bind(server, addr)) { err = true; goto close; }
+    if (!sock_listen(server, 16)) { err = true; goto close; }
 
-    Sock *client = sock_accept(sock);
+    Sock *client = sock_accept(server);
     if (client == NULL) { err = true; goto close; }
 
     const char *msg = "Hello from server!";
@@ -29,7 +29,7 @@ int main(void)
     sock_close(client);
 
 close:
-    sock_close(sock);
+    sock_close(server);
     if (err) sock_log_error();
 
     return 0;

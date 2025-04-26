@@ -8,24 +8,24 @@ int main(void)
 {
     bool err = false;
 
-    Sock *sock = sock_create(SOCK_IPV6, SOCK_TCP);
-    if (sock == NULL) { err = "create"; goto defer; }
+    Sock *s = sock(SOCK_IPV6, SOCK_TCP);
+    if (s == NULL) { err = "create"; goto defer; }
 
     SockAddr addr = sock_addr("::1", 6969);
 
-    if (!sock_connect(sock, addr)) { err = "connect"; goto defer; }
+    if (!sock_connect(s, addr)) { err = "connect"; goto defer; }
 
     const char *msg = "Hello from client!";
     char buf[128];
     memset(buf, 0, sizeof(buf));
 
-    sock_send(sock, msg, strlen(msg));
-    sock_recv(sock, buf, sizeof(buf));
-    printf("%s:%d: %.*s\n", sock->addr.str, sock->addr.port,
+    sock_send(s, msg, strlen(msg));
+    sock_recv(s, buf, sizeof(buf));
+    printf("%s:%d: %.*s\n", s->addr.str, s->addr.port,
             (int)sizeof(buf), buf);
 
 defer:
-    sock_close(sock);
+    sock_close(s);
     if (err) sock_log_error();
 
     return 0;

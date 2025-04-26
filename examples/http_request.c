@@ -13,17 +13,17 @@ int main(void)
 
     printf("%s:%d\n", addr.str, addr.port);
 
-    Sock *sock = sock_create(addr.type, SOCK_TCP);
-    if (sock == NULL) {
+    Sock *s = sock(addr.type, SOCK_TCP);
+    if (s == NULL) {
         fprintf(stderr, "sock_create: ");
         sock_log_error();
         return 1;
     }
 
-    if (!sock_connect(sock, addr)) {
+    if (!sock_connect(s, addr)) {
         fprintf(stderr, "sock_connect: ");
         sock_log_error();
-        sock_close(sock);
+        sock_close(s);
         return 1;
     }
 
@@ -32,16 +32,16 @@ int main(void)
         "Host: example.com\r\n"
         "Connection: close\r\n\r\n";
 
-    sock_send(sock, req, strlen(req));
+    sock_send(s, req, strlen(req));
 
     char res[1024];
     memset(res, 0, sizeof(res));
-    while (sock_recv(sock, res, sizeof(res)-1) > 0) {
+    while (sock_recv(s, res, sizeof(res)-1) > 0) {
         printf("%s\n", res);
         memset(res, 0, sizeof(res));
     }
 
-    sock_close(sock);
+    sock_close(s);
 
     return 0;
 }

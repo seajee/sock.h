@@ -8,7 +8,7 @@
 
 int main(void)
 {
-    Sock *server = sock_create(SOCK_IPV4, SOCK_UDP);
+    Sock *server = sock(SOCK_IPV4, SOCK_UDP);
     if (server == NULL) {
         perror("sock_create");
         return 1;
