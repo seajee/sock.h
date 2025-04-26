@@ -3,7 +3,7 @@ CFLAGS=-Wall -Wextra -ggdb -I.
 LDFLAGS=-lpthread
 
 all: hello_server hello_client hello_server_v6 hello_client_v6 chat_server \
-	chat_client udp_server udp_client
+	chat_client udp_server udp_client http_request
 
 hello_server: examples/hello_server.c
 	$(CC) $(CFLAGS) -o hello_server examples/hello_server.c $(LDFLAGS)
@@ -29,6 +29,9 @@ udp_server: examples/udp_server.c
 udp_client: examples/udp_client.c
 	$(CC) $(CFLAGS) -o udp_client examples/udp_client.c $(LDFLAGS)
 
+http_request: examples/http_request.c
+	$(CC) $(CFLAGS) -o http_request examples/http_request.c $(LDFLAGS)
+
 clean:
 	rm -rf chat_server
 	rm -rf chat_client
@@ -38,3 +41,4 @@ clean:
 	rm -rf hello_client_v6
 	rm -rf udp_server
 	rm -rf udp_client
+	rm -rf http_request

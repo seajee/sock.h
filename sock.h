@@ -1,4 +1,4 @@
-// sock - v1.1.0 - MIT License - https://github.com/seajee/sock.h
+// sock - v1.2.0 - MIT License - https://github.com/seajee/sock.h
 
 #ifndef SOCK_H_
 #define SOCK_H_
@@ -6,14 +6,13 @@
 #include <arpa/inet.h>
 #include <assert.h>
 #include <errno.h>
+#include <netdb.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
-
-#define SOCK_ADDR_STR_CAPACITY 64
 
 typedef enum {
     SOCK_ADDR_INVALID,
@@ -22,9 +21,9 @@ typedef enum {
 } SockAddrType;
 
 typedef struct {
-    SockAddrType type;                // Address type
-    int port;                         // Address port
-    char str[SOCK_ADDR_STR_CAPACITY]; // String representation of the address
+    SockAddrType type;          // Address type
+    int port;                   // Address port
+    char str[INET6_ADDRSTRLEN]; // String representation of the address
     union {
         struct sockaddr sockaddr;
         struct sockaddr_in ipv4;
@@ -90,21 +89,42 @@ SockAddr sock_addr(const char *addr, int port)
 
     if (inet_pton(AF_INET, addr, &sa.ipv4.sin_addr) == 1) {
         sa.type = SOCK_IPV4;
-        sa.len = sizeof(sa.ipv4);
         sa.ipv4.sin_family = AF_INET;
         sa.ipv4.sin_port = htons(port);
+        sa.len = sizeof(sa.ipv4);
+        strncpy(sa.str, addr, sizeof(sa.str));
     } else if (inet_pton(AF_INET6, addr, &sa.ipv6.sin6_addr) == 1) {
         sa.type = SOCK_IPV6;
-        sa.len = sizeof(sa.ipv6);
         sa.ipv6.sin6_family = AF_INET6;
         sa.ipv6.sin6_port = htons(port);
+        sa.len = sizeof(sa.ipv6);
+        strncpy(sa.str, addr, sizeof(sa.str));
     } else {
-        sa.type = SOCK_ADDR_INVALID;
-        return sa;
+        struct addrinfo *res;
+        if (getaddrinfo(addr, NULL, NULL, &res) != 0) {
+            // TODO: specific errors from getaddrinfo are ignored for logging
+            sa.type = SOCK_ADDR_INVALID;
+            return sa;
+        }
+
+        if (res->ai_family == AF_INET) {
+            sa.type = SOCK_IPV4;
+            sa.ipv4 = *(struct sockaddr_in*)res->ai_addr;
+            sa.ipv4.sin_port = htons(port);
+            sa.len = sizeof(sa.ipv4);
+            inet_ntop(AF_INET, &sa.ipv4.sin_addr, sa.str, sizeof(sa.str));
+        } else {
+            sa.type = SOCK_IPV6;
+            sa.ipv6 = *(struct sockaddr_in6*)res->ai_addr;
+            sa.ipv6.sin6_port = htons(port);
+            sa.len = sizeof(sa.ipv6);
+            inet_ntop(AF_INET6, &sa.ipv6.sin6_addr, sa.str, sizeof(sa.str));
+        }
+
+        freeaddrinfo(res);
     }
 
     sa.port = port;
-    strncpy(sa.str, addr, sizeof(sa.str));
 
     return sa;
 }
@@ -291,6 +311,7 @@ void sock_log_errors(void)
 /*
     Revision history:
 
+        1.2.0 (2025-04-26) sock_addr can now resolve hostnames
         1.1.0 (2025-04-26) New sock_log_errors function
                            Fill new Sock's SockAddr after a sock_accept
                            Save remove SockAddr in Sock in sock_connect
