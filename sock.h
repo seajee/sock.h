@@ -1,4 +1,4 @@
-// sock - v1.4.0 - MIT License - https://github.com/seajee/sock.h
+// sock - v1.4.1 - MIT License - https://github.com/seajee/sock.h
 
 #ifndef SOCK_H_
 #define SOCK_H_
@@ -264,7 +264,7 @@ ssize_t sock_recvfrom(Sock *sock, void *buf, size_t size, SockAddr *addr)
 {
     ssize_t res = recvfrom(sock->fd, buf, size, 0, &addr->sockaddr,
                            &sock->addr.len);
-    if (res < 0) {
+    if (res < 0 || addr == NULL) {
         return res;
     }
 
@@ -309,6 +309,7 @@ void sock_log_error(void)
 /*
     Revision history:
 
+        1.4.1 (2025-04-26) Check if addr is NULL in sock_recvfrom
         1.4.0 (2025-04-26) Renamed sock_create() to sock()
         1.3.0 (2025-04-26) Renamed sock_log_errors to sock_log_error
         1.2.0 (2025-04-26) sock_addr can now resolve hostnames
