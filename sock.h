@@ -67,10 +67,10 @@ ssize_t sock_send(Sock *sock, const void *buf, size_t size);
 // Receive data from a socket
 ssize_t sock_recv(Sock *sock, void *buf, size_t size);
 
-// Send data through a socket in `connectionless` mode
+// Send data through a socket in connectionless mode
 ssize_t sock_sendto(Sock *sock, const void *buf, size_t size, SockAddr addr);
 
-// Receive data from a socket in `connectionless` mode
+// Receive data from a socket in connectionless mode
 ssize_t sock_recvfrom(Sock *sock, void *buf, size_t size, SockAddr *addr);
 
 // Close a socket
