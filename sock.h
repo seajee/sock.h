@@ -268,8 +268,6 @@ ssize_t sock_recvfrom(Sock *sock, void *buf, size_t size, SockAddr *addr)
         return res;
     }
 
-    printf("Received sa_family: %d\n", addr->sockaddr.sa_family);
-
     switch (addr->sockaddr.sa_family) {
         case AF_INET: {
             struct sockaddr_in *ipv4 = &addr->ipv4;
