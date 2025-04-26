@@ -1,4 +1,4 @@
-// sock - v1.2.0 - MIT License - https://github.com/seajee/sock.h
+// sock - v1.3.0 - MIT License - https://github.com/seajee/sock.h
 
 #ifndef SOCK_H_
 #define SOCK_H_
@@ -76,8 +76,8 @@ ssize_t sock_recvfrom(Sock *sock, void *buf, size_t size, SockAddr *addr);
 // Close a socket
 void sock_close(Sock *sock);
 
-// Log last errors to stderr
-void sock_log_errors(void);
+// Log last error to stderr
+void sock_log_error(void);
 
 #endif // SOCK_H_
 
@@ -301,7 +301,7 @@ void sock_close(Sock *sock)
     free(sock);
 }
 
-void sock_log_errors(void)
+void sock_log_error(void)
 {
     fprintf(stderr, "SOCK ERROR: %s\n", strerror(errno));
 }
@@ -311,6 +311,7 @@ void sock_log_errors(void)
 /*
     Revision history:
 
+        1.3.0 (2025-04-26) Renamed sock_log_errors to sock_log_error
         1.2.0 (2025-04-26) sock_addr can now resolve hostnames
         1.1.0 (2025-04-26) New sock_log_errors function
                            Fill new Sock's SockAddr after a sock_accept

@@ -30,7 +30,7 @@ int main(void)
 
 close:
     sock_close(sock);
-    if (err) sock_log_errors();
+    if (err) sock_log_error();
 
     return 0;
 }
