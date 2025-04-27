@@ -1,4 +1,4 @@
-// sock - v1.4.2 - MIT License - https://github.com/seajee/sock.h
+// sock - v1.4.3 - MIT License - https://github.com/seajee/sock.h
 
 #ifndef SOCK_H_
 #define SOCK_H_
@@ -167,6 +167,13 @@ Sock *sock(SockAddrType domain, SockType type)
         return NULL;
     }
 
+    int enable = 1;
+    if (setsockopt(sock->fd, SOL_SOCKET, SO_REUSEADDR,
+                   &enable, sizeof(enable)) < 0) {
+        free(sock);
+        return NULL;
+    }
+
     return sock;
 }
 
@@ -310,6 +317,7 @@ void sock_log_error(void)
 /*
     Revision history:
 
+        1.4.3 (2025-04-27) Enable socket option SO_REUSEADDR in sock()
         1.4.2 (2025-04-26) #include <stdio.h>
         1.4.1 (2025-04-26) Check if addr is NULL in sock_recvfrom
         1.4.0 (2025-04-26) Renamed sock_create() to sock()
