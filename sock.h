@@ -1,4 +1,4 @@
-// sock - v1.4.3 - MIT License - https://github.com/seajee/sock.h
+// sock - v1.4.4 - MIT License - https://github.com/seajee/sock.h
 
 #ifndef SOCK_H_
 #define SOCK_H_
@@ -270,8 +270,15 @@ ssize_t sock_sendto(Sock *sock, const void *buf, size_t size, SockAddr addr)
 
 ssize_t sock_recvfrom(Sock *sock, void *buf, size_t size, SockAddr *addr)
 {
-    ssize_t res = recvfrom(sock->fd, buf, size, 0, &addr->sockaddr,
-                           &sock->addr.len);
+    struct sockaddr *sa = NULL;
+    socklen_t *len = NULL;
+
+    if (addr != NULL) {
+        sa = &addr->sockaddr;
+        len = &sock->addr.len;
+    }
+
+    ssize_t res = recvfrom(sock->fd, buf, size, 0, sa, len);
     if (res < 0 || addr == NULL) {
         return res;
     }
@@ -317,6 +324,7 @@ void sock_log_error(void)
 /*
     Revision history:
 
+        1.4.4 (2025-04-27) Fix NULL check of addr when calling recvfrom
         1.4.3 (2025-04-27) Enable socket option SO_REUSEADDR in sock()
         1.4.2 (2025-04-26) #include <stdio.h>
         1.4.1 (2025-04-26) Check if addr is NULL in sock_recvfrom
