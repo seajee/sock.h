@@ -57,11 +57,21 @@ void broadcast(const Sock *from, const char *msg, size_t msg_len)
     pthread_mutex_unlock(&pool_lock);
 }
 
-void *handle_client(void *user_data)
+void handle_client(Sock *client, void *user_data)
 {
-    Sock *client = (Sock*) user_data;
-    ssize_t received = 0;
+    (void) user_data;
 
+    if (!add_client(client)) {
+        fprintf(stderr, "ERROR: TCP_Socket pool buffer is full (%d)\n",
+                POOL_CAPACITY);
+        sock_close(client);
+        return;
+    }
+
+    printf("INFO: New client connected from %s:%d\n", client->addr.str,
+            client->addr.port);
+
+    ssize_t received = 0;
     char buffer[BUFFER_CAPACITY];
     memset(buffer, 0, sizeof(buffer));
 
@@ -108,8 +118,6 @@ disconnect:
     received = snprintf(buffer, sizeof(buffer), "[Server] `%.*s` left the chat",
             (int)username_length, username);
     broadcast(client, buffer, received);
-
-    return NULL;
 }
 
 int main(void)
@@ -139,38 +147,10 @@ int main(void)
     printf("INFO: Listen socket\n");
 
     while (true) {
-        Sock *client = sock_accept(server);
-        if (client == NULL) {
+        if (!sock_async_accept(server, handle_client, NULL)) {
             fprintf(stderr, "ERROR: Could not accept client\n");
-            sock_close(client);
             continue;
         }
-
-        if (!add_client(client)) {
-            fprintf(stderr, "ERROR: TCP_Socket pool buffer is full (%d)\n",
-                    POOL_CAPACITY);
-            sock_close(client);
-            continue;
-        }
-
-        // printf("INFO: Pool:\n");
-        // pthread_mutex_lock(&pool_lock);
-        // for (size_t i = 0; i < POOL_CAPACITY; ++i) {
-        //     printf("  %ld: %p\n", i, socket_pool[i]);
-        // }
-        // pthread_mutex_unlock(&pool_lock);
-        // printf("INFO: End pool:\n");
-
-        pthread_t thread;
-        if (pthread_create(&thread, NULL, &handle_client, client) != 0) {
-            fprintf(stderr, "ERROR: Could not create thread\n");
-            sock_close(client);
-            continue;
-        }
-        pthread_detach(thread);
-
-        printf("INFO: New client connected from %s:%d\n", client->addr.str,
-                client->addr.port);
     }
 
     sock_close(server);
