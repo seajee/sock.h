@@ -1,4 +1,4 @@
-// sock - v1.4.4 - MIT License - https://github.com/seajee/sock.h
+// sock - v1.5.0 - MIT License - https://github.com/seajee/sock.h
 
 #ifndef SOCK_H_
 #define SOCK_H_
@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <netdb.h>
+#include <pthread.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -44,6 +45,14 @@ typedef struct {
     int fd;         // File descriptor
 } Sock;
 
+typedef void (*SockThreadFn)(Sock *sock, void *user_data);
+
+typedef struct {
+    SockThreadFn fn;
+    Sock *sock;
+    void *user_data;
+} SockThreadData;
+
 // Create a SockAddr structure from primitives
 SockAddr sock_addr(const char *addr, int port);
 
@@ -58,6 +67,9 @@ bool sock_listen(Sock *sock, int backlog);
 
 // Accept connections from a socket
 Sock *sock_accept(Sock *sock);
+
+// Accept connections from a socket and handle them into a separate thread
+bool sock_async_accept(Sock *sock, SockThreadFn fn, void *user_data);
 
 // Connect a socket to a specific address
 bool sock_connect(Sock *sock, SockAddr addr);
@@ -79,6 +91,9 @@ void sock_close(Sock *sock);
 
 // Log last error to stderr
 void sock_log_error(void);
+
+// Private functions
+void *sock__accept_thread(void *data);
 
 #endif // SOCK_H_
 
@@ -242,6 +257,35 @@ Sock *sock_accept(Sock *sock)
     return res;
 }
 
+bool sock_async_accept(Sock *sock, SockThreadFn fn, void *user_data)
+{
+    Sock *client = sock_accept(sock);
+    if (client == NULL) {
+        return false;
+    }
+
+    SockThreadData *thread_data = malloc(sizeof(*thread_data));
+    if (thread_data == NULL) {
+        sock_close(client);
+        return false;
+    }
+
+    thread_data->fn = fn;
+    thread_data->sock = client;
+    thread_data->user_data = user_data;
+
+    pthread_t thread;
+    if (pthread_create(&thread, NULL, sock__accept_thread, thread_data) != 0) {
+        free(thread_data);
+        sock_close(client);
+        return false;
+    }
+
+    pthread_detach(thread);
+
+    return true;
+}
+
 bool sock_connect(Sock *sock, SockAddr addr)
 {
     if (connect(sock->fd, &addr.sockaddr, addr.len) < 0) {
@@ -319,11 +363,28 @@ void sock_log_error(void)
     fprintf(stderr, "SOCK ERROR: %s\n", strerror(errno));
 }
 
+void *sock__accept_thread(void *data)
+{
+    SockThreadData *thread_data = (SockThreadData*) data;
+
+    SockThreadFn fn = thread_data->fn;
+    Sock *sock = thread_data->sock;
+    void *user_data = thread_data->user_data;
+
+    free(thread_data);
+
+    fn(sock, user_data);
+
+    return NULL;
+}
+
 #endif // SOCK_IMPLEMENTATION
 
 /*
     Revision history:
 
+        1.5.0 (2025-05-20) Added new utility function `sock_async_accept` for
+                           directly accepting new clients separate threads
         1.4.4 (2025-04-27) Fix NULL check of addr when calling recvfrom
         1.4.3 (2025-04-27) Enable socket option SO_REUSEADDR in sock()
         1.4.2 (2025-04-26) #include <stdio.h>
