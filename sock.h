@@ -1,4 +1,4 @@
-// sock.h - v1.6.1 - MIT License - https://github.com/seajee/sock.h
+// sock.h - v1.6.2 - MIT License - https://github.com/seajee/sock.h
 
 #ifndef SOCK_H_
 #define SOCK_H_
@@ -431,6 +431,12 @@ void sock_log_error(const Sock *sock)
         return;
     }
 
+    if (sock->last_error == NULL) {
+        fprintf(stderr, "SOCK ERROR: socket is empty. errno says: %s\n",
+                strerror(errno));
+        return;
+    }
+
     fprintf(stderr, "SOCK ERROR: %s\n", sock->last_error);
 }
 
@@ -459,6 +465,7 @@ void *sock__accept_thread(void *data)
 /*
     Revision history:
 
+        1.6.2 (2025-08-03) Log errno error if sock last error is NULL
         1.6.1 (2025-08-03) Log errno error if sock is NULL in sock_log_error
         1.6.0 (2025-08-03) Improve error logging; check for NULL pointers;
                            rename sock() -> sock_create()
