@@ -7,7 +7,7 @@ int main(void)
 {
     SockAddr addr = sock_addr("example.com", 80);
     if (addr.type == SOCK_ADDR_INVALID) {
-        sock_log_error();
+        fprintf(stderr, "ERROR: Could not resolve address %s\n", addr.str);
         return 1;
     }
 
@@ -16,13 +16,13 @@ int main(void)
     Sock *s = sock(addr.type, SOCK_TCP);
     if (s == NULL) {
         fprintf(stderr, "sock_create: ");
-        sock_log_error();
+        sock_log_error(s);
         return 1;
     }
 
     if (!sock_connect(s, addr)) {
         fprintf(stderr, "sock_connect: ");
-        sock_log_error();
+        sock_log_error(s);
         sock_close(s);
         return 1;
     }

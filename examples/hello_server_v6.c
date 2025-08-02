@@ -29,8 +29,8 @@ int main(void)
     sock_close(client);
 
 close:
+    if (err) sock_log_error(server);
     sock_close(server);
-    if (err) sock_log_error();
 
     return 0;
 }

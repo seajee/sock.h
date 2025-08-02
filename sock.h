@@ -1,4 +1,4 @@
-// sock.h - v1.5.1 - MIT License - https://github.com/seajee/sock.h
+// sock.h - v1.6.0 - MIT License - https://github.com/seajee/sock.h
 
 #ifndef SOCK_H_
 #define SOCK_H_
@@ -44,9 +44,10 @@ typedef enum {
 } SockType;
 
 typedef struct {
-    SockType type;  // Socket type
-    SockAddr addr;  // Socket address
-    int fd;         // File descriptor
+    SockType type;    // Socket type
+    SockAddr addr;    // Socket address
+    int fd;           // File descriptor
+    char *last_error; // Last error about this socket
 } Sock;
 
 typedef void (*SockThreadFn)(Sock *sock, void *user_data);
@@ -57,11 +58,11 @@ typedef struct {
     void *user_data;
 } SockThreadData;
 
-// Create a SockAddr structure from primitives
-SockAddr sock_addr(const char *addr, int port);
-
 // Create a socket with the corresponding domain and type
 Sock *sock(SockAddrType domain, SockType type);
+
+// Create a SockAddr structure from primitives
+SockAddr sock_addr(const char *addr, int port);
 
 // Bind a socket to a specific address
 bool sock_bind(Sock *sock, SockAddr addr);
@@ -94,7 +95,7 @@ ssize_t sock_recvfrom(Sock *sock, void *buf, size_t size, SockAddr *addr);
 void sock_close(Sock *sock);
 
 // Log last error to stderr
-void sock_log_error(void);
+void sock_log_error(const Sock *sock);
 
 // Private functions
 void *sock__accept_thread(void *data);
@@ -110,53 +111,6 @@ void *sock__accept_thread(void *data);
 #ifdef __cplusplus
 extern "C" { // Prevent name mangling
 #endif // __cplusplus
-
-SockAddr sock_addr(const char *addr, int port)
-{
-    SockAddr sa;
-    memset(&sa, 0, sizeof(sa));
-
-    if (inet_pton(AF_INET, addr, &sa.ipv4.sin_addr) == 1) {
-        sa.type = SOCK_IPV4;
-        sa.ipv4.sin_family = AF_INET;
-        sa.ipv4.sin_port = htons(port);
-        sa.len = sizeof(sa.ipv4);
-        strncpy(sa.str, addr, sizeof(sa.str));
-    } else if (inet_pton(AF_INET6, addr, &sa.ipv6.sin6_addr) == 1) {
-        sa.type = SOCK_IPV6;
-        sa.ipv6.sin6_family = AF_INET6;
-        sa.ipv6.sin6_port = htons(port);
-        sa.len = sizeof(sa.ipv6);
-        strncpy(sa.str, addr, sizeof(sa.str));
-    } else {
-        struct addrinfo *res;
-        if (getaddrinfo(addr, NULL, NULL, &res) != 0) {
-            // TODO: specific errors from getaddrinfo are ignored for logging
-            sa.type = SOCK_ADDR_INVALID;
-            return sa;
-        }
-
-        if (res->ai_family == AF_INET) {
-            sa.type = SOCK_IPV4;
-            sa.ipv4 = *(struct sockaddr_in*)res->ai_addr;
-            sa.ipv4.sin_port = htons(port);
-            sa.len = sizeof(sa.ipv4);
-            inet_ntop(AF_INET, &sa.ipv4.sin_addr, sa.str, sizeof(sa.str));
-        } else {
-            sa.type = SOCK_IPV6;
-            sa.ipv6 = *(struct sockaddr_in6*)res->ai_addr;
-            sa.ipv6.sin6_port = htons(port);
-            sa.len = sizeof(sa.ipv6);
-            inet_ntop(AF_INET6, &sa.ipv6.sin6_addr, sa.str, sizeof(sa.str));
-        }
-
-        freeaddrinfo(res);
-    }
-
-    sa.port = port;
-
-    return sa;
-}
 
 Sock *sock(SockAddrType domain, SockType type)
 {
@@ -205,9 +159,65 @@ Sock *sock(SockAddrType domain, SockType type)
     return sock;
 }
 
+SockAddr sock_addr(const char *addr, int port)
+{
+    SockAddr sa;
+    memset(&sa, 0, sizeof(sa));
+
+    if (addr == NULL) {
+        return sa;
+    }
+
+    if (inet_pton(AF_INET, addr, &sa.ipv4.sin_addr) == 1) {
+        sa.type = SOCK_IPV4;
+        sa.ipv4.sin_family = AF_INET;
+        sa.ipv4.sin_port = htons(port);
+        sa.len = sizeof(sa.ipv4);
+        strncpy(sa.str, addr, sizeof(sa.str));
+    } else if (inet_pton(AF_INET6, addr, &sa.ipv6.sin6_addr) == 1) {
+        sa.type = SOCK_IPV6;
+        sa.ipv6.sin6_family = AF_INET6;
+        sa.ipv6.sin6_port = htons(port);
+        sa.len = sizeof(sa.ipv6);
+        strncpy(sa.str, addr, sizeof(sa.str));
+    } else {
+        struct addrinfo *res;
+        if (getaddrinfo(addr, NULL, NULL, &res) != 0) {
+            // TODO: specific errors from getaddrinfo are ignored for logging
+            sa.type = SOCK_ADDR_INVALID;
+            return sa;
+        }
+
+        if (res->ai_family == AF_INET) {
+            sa.type = SOCK_IPV4;
+            sa.ipv4 = *(struct sockaddr_in*)res->ai_addr;
+            sa.ipv4.sin_port = htons(port);
+            sa.len = sizeof(sa.ipv4);
+            inet_ntop(AF_INET, &sa.ipv4.sin_addr, sa.str, sizeof(sa.str));
+        } else {
+            sa.type = SOCK_IPV6;
+            sa.ipv6 = *(struct sockaddr_in6*)res->ai_addr;
+            sa.ipv6.sin6_port = htons(port);
+            sa.len = sizeof(sa.ipv6);
+            inet_ntop(AF_INET6, &sa.ipv6.sin6_addr, sa.str, sizeof(sa.str));
+        }
+
+        freeaddrinfo(res);
+    }
+
+    sa.port = port;
+
+    return sa;
+}
+
 bool sock_bind(Sock *sock, SockAddr addr)
 {
+    if (sock == NULL) {
+        return false;
+    }
+
     if (bind(sock->fd, &addr.sockaddr, addr.len) < 0) {
+        sock->last_error = strerror(errno);
         return false;
     }
 
@@ -218,7 +228,12 @@ bool sock_bind(Sock *sock, SockAddr addr)
 
 bool sock_listen(Sock *sock, int backlog)
 {
+    if (sock == NULL) {
+        return false;
+    }
+
     if (listen(sock->fd, backlog) < 0) {
+        sock->last_error = strerror(errno);
         return false;
     }
 
@@ -227,13 +242,19 @@ bool sock_listen(Sock *sock, int backlog)
 
 Sock *sock_accept(Sock *sock)
 {
+    if (sock == NULL) {
+        return NULL;
+    }
+
     int fd = accept(sock->fd, &sock->addr.sockaddr, &sock->addr.len);
     if (fd < 0) {
+        sock->last_error = strerror(errno);
         return NULL;
     }
 
     Sock *res = (Sock*)malloc(sizeof(*res));
     if (res == NULL) {
+        sock->last_error = strerror(errno);
         return NULL;
     }
     memset(res, 0, sizeof(*res));
@@ -272,6 +293,10 @@ Sock *sock_accept(Sock *sock)
 
 bool sock_async_accept(Sock *sock, SockThreadFn fn, void *user_data)
 {
+    if (sock == NULL) {
+        return false;
+    }
+
     Sock *client = sock_accept(sock);
     if (client == NULL) {
         return false;
@@ -281,6 +306,7 @@ bool sock_async_accept(Sock *sock, SockThreadFn fn, void *user_data)
         (SockThreadData*)malloc(sizeof(*thread_data));
     if (thread_data == NULL) {
         sock_close(client);
+        sock->last_error = strerror(errno);
         return false;
     }
 
@@ -292,6 +318,7 @@ bool sock_async_accept(Sock *sock, SockThreadFn fn, void *user_data)
     if (pthread_create(&thread, NULL, sock__accept_thread, thread_data) != 0) {
         free(thread_data);
         sock_close(client);
+        sock->last_error = strerror(errno);
         return false;
     }
 
@@ -302,6 +329,10 @@ bool sock_async_accept(Sock *sock, SockThreadFn fn, void *user_data)
 
 bool sock_connect(Sock *sock, SockAddr addr)
 {
+    if (sock == NULL) {
+        return false;
+    }
+
     if (connect(sock->fd, &addr.sockaddr, addr.len) < 0) {
         return false;
     }
@@ -313,21 +344,37 @@ bool sock_connect(Sock *sock, SockAddr addr)
 
 ssize_t sock_send(Sock *sock, const void *buf, size_t size)
 {
+    if (sock == NULL || buf == NULL) {
+        return -1;
+    }
+
     return send(sock->fd, buf, size, 0);
 }
 
 ssize_t sock_recv(Sock *sock, void *buf, size_t size)
 {
+    if (sock == NULL || buf == NULL) {
+        return -1;
+    }
+
     return recv(sock->fd, buf, size, 0);
 }
 
 ssize_t sock_sendto(Sock *sock, const void *buf, size_t size, SockAddr addr)
 {
+    if (sock == NULL || buf == NULL) {
+        return -1;
+    }
+
     return sendto(sock->fd, buf, size, 0, &addr.sockaddr, addr.len);
 }
 
 ssize_t sock_recvfrom(Sock *sock, void *buf, size_t size, SockAddr *addr)
 {
+    if (sock == NULL || buf == NULL) {
+        return -1;
+    }
+
     struct sockaddr *sa = NULL;
     socklen_t *len = NULL;
 
@@ -368,13 +415,22 @@ ssize_t sock_recvfrom(Sock *sock, void *buf, size_t size, SockAddr *addr)
 
 void sock_close(Sock *sock)
 {
+    if (sock == NULL) {
+        return;
+    }
+
     close(sock->fd);
     free(sock);
 }
 
-void sock_log_error(void)
+void sock_log_error(const Sock *sock)
 {
-    fprintf(stderr, "SOCK ERROR: %s\n", strerror(errno));
+    if (sock == NULL) {
+        fprintf(stderr, "SOCK ERROR: socket is NULL\n");
+        return;
+    }
+
+    fprintf(stderr, "SOCK ERROR: %s\n", sock->last_error);
 }
 
 void *sock__accept_thread(void *data)
@@ -402,6 +458,8 @@ void *sock__accept_thread(void *data)
 /*
     Revision history:
 
+        1.6.0 (2025-08-03) Improve error logging; check for NULL pointers;
+                           rename sock() -> sock_create()
         1.5.1 (2025-08-03) Improve support for C++
         1.5.0 (2025-05-20) Added new utility function `sock_async_accept` for
                            directly accepting new clients separate threads

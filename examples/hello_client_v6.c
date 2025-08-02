@@ -25,8 +25,8 @@ int main(void)
             (int)sizeof(buf), buf);
 
 defer:
+    if (err) sock_log_error(s);
     sock_close(s);
-    if (err) sock_log_error();
 
     return 0;
 }
