@@ -1,4 +1,4 @@
-// sock - v1.5.0 - MIT License - https://github.com/seajee/sock.h
+// sock.h - v1.5.1 - MIT License - https://github.com/seajee/sock.h
 
 #ifndef SOCK_H_
 #define SOCK_H_
@@ -15,6 +15,10 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+#ifdef __cplusplus
+extern "C" { // Prevent name mangling
+#endif // __cplusplus
 
 typedef enum {
     SOCK_ADDR_INVALID,
@@ -95,13 +99,22 @@ void sock_log_error(void);
 // Private functions
 void *sock__accept_thread(void *data);
 
+#ifdef __cplusplus
+}
+#endif // __cplusplus
+
 #endif // SOCK_H_
 
 #ifdef SOCK_IMPLEMENTATION
 
+#ifdef __cplusplus
+extern "C" { // Prevent name mangling
+#endif // __cplusplus
+
 SockAddr sock_addr(const char *addr, int port)
 {
-    SockAddr sa = {0};
+    SockAddr sa;
+    memset(&sa, 0, sizeof(sa));
 
     if (inet_pton(AF_INET, addr, &sa.ipv4.sin_addr) == 1) {
         sa.type = SOCK_IPV4;
@@ -147,7 +160,7 @@ SockAddr sock_addr(const char *addr, int port)
 
 Sock *sock(SockAddrType domain, SockType type)
 {
-    Sock *sock = malloc(sizeof(*sock));
+    Sock *sock = (Sock*)malloc(sizeof(*sock));
     if (sock == NULL) {
         return NULL;
     }
@@ -219,7 +232,7 @@ Sock *sock_accept(Sock *sock)
         return NULL;
     }
 
-    Sock *res = malloc(sizeof(*res));
+    Sock *res = (Sock*)malloc(sizeof(*res));
     if (res == NULL) {
         return NULL;
     }
@@ -264,7 +277,8 @@ bool sock_async_accept(Sock *sock, SockThreadFn fn, void *user_data)
         return false;
     }
 
-    SockThreadData *thread_data = malloc(sizeof(*thread_data));
+    SockThreadData *thread_data =
+        (SockThreadData*)malloc(sizeof(*thread_data));
     if (thread_data == NULL) {
         sock_close(client);
         return false;
@@ -378,11 +392,17 @@ void *sock__accept_thread(void *data)
     return NULL;
 }
 
+
+#ifdef __cplusplus
+}
+#endif // __cplusplus
+
 #endif // SOCK_IMPLEMENTATION
 
 /*
     Revision history:
 
+        1.5.1 (2025-08-03) Improve support for C++
         1.5.0 (2025-05-20) Added new utility function `sock_async_accept` for
                            directly accepting new clients separate threads
         1.4.4 (2025-04-27) Fix NULL check of addr when calling recvfrom
@@ -404,19 +424,19 @@ void *sock__accept_thread(void *data)
 
 /*
  * MIT License
- * 
+ *
  * Copyright (c) 2025 seajee
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
  * to deal in the Software without restriction, including without limitation
  * the rights to use, copy, modify, merge, publish, distribute, sublicense,
  * and/or sell copies of the Software, and to permit persons to whom the
  * Software is furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in
  * all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
