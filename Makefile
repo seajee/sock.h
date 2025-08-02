@@ -9,7 +9,7 @@ BUILDS=$(patsubst examples/%.c, build/%, $(EXAMPLES))
 
 all: $(BUILDS)
 
-build/%: examples/%.c sock.h build
+build/%: examples/%.c sock.h | build
 	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
 
 build:
