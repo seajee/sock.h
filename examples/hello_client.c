@@ -8,7 +8,7 @@ int main(void)
 {
     char *err = "None";
 
-    Sock *socket = sock(SOCK_IPV4, SOCK_TCP);
+    Sock *socket = sock_create(SOCK_IPV4, SOCK_TCP);
     if (socket == NULL) { err = "create"; goto defer; }
 
     SockAddr addr = sock_addr("127.0.0.1", 6969);

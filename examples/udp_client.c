@@ -6,7 +6,7 @@
 
 int main(void)
 {
-    Sock *client = sock(SOCK_IPV4, SOCK_UDP);
+    Sock *client = sock_create(SOCK_IPV4, SOCK_UDP);
     if (client == NULL) {
         perror("sock_create");
         return 1;

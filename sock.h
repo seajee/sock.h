@@ -59,7 +59,7 @@ typedef struct {
 } SockThreadData;
 
 // Create a socket with the corresponding domain and type
-Sock *sock(SockAddrType domain, SockType type);
+Sock *sock_create(SockAddrType domain, SockType type);
 
 // Create a SockAddr structure from primitives
 SockAddr sock_addr(const char *addr, int port);
@@ -112,7 +112,7 @@ void *sock__accept_thread(void *data);
 extern "C" { // Prevent name mangling
 #endif // __cplusplus
 
-Sock *sock(SockAddrType domain, SockType type)
+Sock *sock_create(SockAddrType domain, SockType type)
 {
     Sock *sock = (Sock*)malloc(sizeof(*sock));
     if (sock == NULL) {

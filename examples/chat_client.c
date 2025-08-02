@@ -33,7 +33,7 @@ int main(int argc, char **argv)
         address = argv[1];
     }
 
-    Sock *client = sock(SOCK_IPV4, SOCK_TCP);
+    Sock *client = sock_create(SOCK_IPV4, SOCK_TCP);
     if (client == NULL) {
         fprintf(stderr, "ERROR: Could not create socket\n");
         return EXIT_FAILURE;

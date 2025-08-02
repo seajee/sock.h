@@ -7,7 +7,7 @@ int main(void)
 {
     bool err = false;
 
-    Sock *server = sock(SOCK_IPV6, SOCK_TCP);
+    Sock *server = sock_create(SOCK_IPV6, SOCK_TCP);
     if (server == NULL) { err = true; goto close; }
 
     SockAddr addr = sock_addr("::", 6969);

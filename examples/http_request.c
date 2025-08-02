@@ -13,7 +13,7 @@ int main(void)
 
     printf("%s:%d\n", addr.str, addr.port);
 
-    Sock *s = sock(addr.type, SOCK_TCP);
+    Sock *s = sock_create(addr.type, SOCK_TCP);
     if (s == NULL) {
         fprintf(stderr, "sock_create: ");
         sock_log_error(s);

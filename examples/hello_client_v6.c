@@ -8,7 +8,7 @@ int main(void)
 {
     bool err = false;
 
-    Sock *s = sock(SOCK_IPV6, SOCK_TCP);
+    Sock *s = sock_create(SOCK_IPV6, SOCK_TCP);
     if (s == NULL) { err = "create"; goto defer; }
 
     SockAddr addr = sock_addr("::1", 6969);
