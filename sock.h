@@ -1,4 +1,4 @@
-// sock.h - v1.6.2 - MIT License - https://github.com/seajee/sock.h
+// sock.h - v1.6.3 - MIT License - https://github.com/seajee/sock.h
 
 #ifndef SOCK_H_
 #define SOCK_H_
@@ -50,10 +50,10 @@ typedef struct {
     char *last_error; // Last error about this socket
 } Sock;
 
-typedef void (*SockThreadFn)(Sock *sock, void *user_data);
+typedef void (*SockThreadCallback)(Sock *sock, void *user_data);
 
 typedef struct {
-    SockThreadFn fn;
+    SockThreadCallback callback;
     Sock *sock;
     void *user_data;
 } SockThreadData;
@@ -74,7 +74,7 @@ bool sock_listen(Sock *sock, int backlog);
 Sock *sock_accept(Sock *sock);
 
 // Accept connections from a socket and handle them into a separate thread
-bool sock_async_accept(Sock *sock, SockThreadFn fn, void *user_data);
+bool sock_async_accept(Sock *sock, SockThreadCallback fn, void *user_data);
 
 // Connect a socket to a specific address
 bool sock_connect(Sock *sock, SockAddr addr);
@@ -291,7 +291,7 @@ Sock *sock_accept(Sock *sock)
     return res;
 }
 
-bool sock_async_accept(Sock *sock, SockThreadFn fn, void *user_data)
+bool sock_async_accept(Sock *sock, SockThreadCallback fn, void *user_data)
 {
     if (sock == NULL) {
         return false;
@@ -310,7 +310,7 @@ bool sock_async_accept(Sock *sock, SockThreadFn fn, void *user_data)
         return false;
     }
 
-    thread_data->fn = fn;
+    thread_data->callback = fn;
     thread_data->sock = client;
     thread_data->user_data = user_data;
 
@@ -442,15 +442,19 @@ void sock_log_error(const Sock *sock)
 
 void *sock__accept_thread(void *data)
 {
+    if (data == NULL) {
+        return NULL;
+    }
+
     SockThreadData *thread_data = (SockThreadData*) data;
 
-    SockThreadFn fn = thread_data->fn;
+    SockThreadCallback callback = thread_data->callback;
     Sock *sock = thread_data->sock;
     void *user_data = thread_data->user_data;
 
     free(thread_data);
 
-    fn(sock, user_data);
+    callback(sock, user_data);
 
     return NULL;
 }
@@ -465,6 +469,7 @@ void *sock__accept_thread(void *data)
 /*
     Revision history:
 
+        1.6.2 (2025-08-24) Change SockThreadFn -> SockThreadCallback
         1.6.2 (2025-08-03) Log errno error if sock last error is NULL
         1.6.1 (2025-08-03) Log errno error if sock is NULL in sock_log_error
         1.6.0 (2025-08-03) Improve error logging; check for NULL pointers;
