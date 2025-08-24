@@ -469,7 +469,7 @@ void *sock__accept_thread(void *data)
 /*
     Revision history:
 
-        1.6.2 (2025-08-24) Change SockThreadFn -> SockThreadCallback
+        1.6.3 (2025-08-24) Change SockThreadFn -> SockThreadCallback
         1.6.2 (2025-08-03) Log errno error if sock last error is NULL
         1.6.1 (2025-08-03) Log errno error if sock is NULL in sock_log_error
         1.6.0 (2025-08-03) Improve error logging; check for NULL pointers;
