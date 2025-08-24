@@ -21,7 +21,7 @@ extern "C" { // Prevent name mangling
 #endif // __cplusplus
 
 typedef enum {
-    SOCK_ADDR_INVALID,
+    SOCK_ADDR_INVALID = 0,
     SOCK_IPV4,
     SOCK_IPV6
 } SockAddrType;
@@ -39,6 +39,7 @@ typedef struct {
 } SockAddr;
 
 typedef enum {
+    SOCK_TYPE_INVALID = 0,
     SOCK_TCP,
     SOCK_UDP
 } SockType;
