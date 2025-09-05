@@ -13,7 +13,7 @@ int main(void)
 
     SockAddr addr = sock_addr("0.0.0.0", 6969);
     if (!sock_bind(server, addr)) { err = "bind"; goto defer; }
-    if (!sock_listen(server, 16)) { err = "listen"; goto defer; }
+    if (!sock_listen(server)) { err = "listen"; goto defer; }
 
     Sock *client = sock_accept(server);
     if (client == NULL) { err = "accept"; goto defer; }

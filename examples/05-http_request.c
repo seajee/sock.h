@@ -5,11 +5,15 @@
 
 int main(void)
 {
-    SockAddr addr = sock_addr("example.com", 80);
-    if (addr.type == SOCK_ADDR_INVALID) {
-        fprintf(stderr, "ERROR: Could not resolve address %s\n", addr.str);
+    const char *domain_name = "example.com";
+    SockAddrList addr_list = sock_dns(domain_name, 80, SOCK_IPV4, SOCK_TCP);
+    if (addr_list.count == 0) {
+        fprintf(stderr, "ERROR: Could not resolve address %s\n", domain_name);
         return 1;
     }
+
+    SockAddr addr = addr_list.items[0];
+    sock_addr_list_free(&addr_list);
 
     printf("%s:%d\n", addr.str, addr.port);
 
@@ -30,7 +34,8 @@ int main(void)
     const char *req =
         "GET / HTTP/1.1\r\n"
         "Host: example.com\r\n"
-        "Connection: close\r\n\r\n";
+        "Connection: close\r\n"
+        "\r\n";
 
     sock_send(s, req, strlen(req));
 

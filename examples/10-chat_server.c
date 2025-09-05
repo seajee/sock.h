@@ -138,7 +138,7 @@ int main(void)
 
     printf("INFO: Bind socket\n");
 
-    if (!sock_listen(server, 10)) {
+    if (!sock_listen(server)) {
         fprintf(stderr, "ERROR: Could not listen on socket\n");
         sock_close(server);
         return EXIT_FAILURE;

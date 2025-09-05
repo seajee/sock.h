@@ -12,7 +12,7 @@ int main(void)
 
     SockAddr addr = sock_addr("::", 6969);
     if (!sock_bind(server, addr)) { err = true; goto close; }
-    if (!sock_listen(server, 16)) { err = true; goto close; }
+    if (!sock_listen(server)) { err = true; goto close; }
 
     Sock *client = sock_accept(server);
     if (client == NULL) { err = true; goto close; }
