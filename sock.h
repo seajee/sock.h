@@ -4,7 +4,7 @@
     #              @@@@@@                                           #
     #              @    @                                           #
     #              @====@                                           #
-    #              @    @           sock.h - v1.7.0                 #
+    #              @    @           sock.h - v1.7.1                 #
     #              @    @             MIT License                   #
     #            @@% .@ @                                           #
     #         @@     @  @    https://github.com/seajee/sock.h       #
@@ -353,11 +353,15 @@ SockAddrList sock_dns(const char *addr, int port, SockAddrType addr_hint, SockTy
     hints.ai_family = (addr_hint != SOCK_ADDR_INVALID ? addr_hint : AF_UNSPEC);
     hints.ai_socktype = sock_hint;
 
-    char port_str[8];
-    snprintf(port_str, sizeof(port_str), "%d", port);
+    char *service = NULL;
+    char port_str[16];
+    if (port > 0) {
+        snprintf(port_str, sizeof(port_str), "%d", port);
+        service = port_str;
+    }
 
     struct addrinfo *res;
-    if (getaddrinfo(addr, port_str, &hints, &res) != 0) {
+    if (getaddrinfo(addr, service, &hints, &res) != 0) {
         return list;
     }
 
@@ -674,6 +678,7 @@ void sock__convert_addr(SockAddr *addr)
 /*
     Revision history:
 
+        1.7.1 (2025-09-07) Pass NULL to getaddrinfo if port is 0 in sock_dns()
         1.7.0 (2025-09-06) Header now includes documentation; New sock_dns()
                            function; major improvements and refactoring
         1.6.3 (2025-08-24) Change SockThreadFn -> SockThreadCallback
