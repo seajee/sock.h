@@ -4,7 +4,7 @@
     #              @@@@@@                                           #
     #              @    @                                           #
     #              @====@                                           #
-    #              @    @           sock.h - v1.7.1                 #
+    #              @    @           sock.h - v1.7.2                 #
     #              @    @             MIT License                   #
     #            @@% .@ @                                           #
     #         @@     @  @    https://github.com/seajee/sock.h       #
@@ -101,11 +101,21 @@
 // sock. On success returns the number of bytes sent. On error a negative
 // number shall be returned.
 //
+//     bool sock_send_all(Sock *sock, const void *buf, size_t size)
+//
+// Same as sock_send() but ensures that all of the content of buf is sent. On
+// error returns false.
+//
 //     ssize_t sock_recv(Sock *sock, void *buf, size_t size)
 //
 // Same as recv() but with socks: receives a message from sock end writes it
 // into the specified buffer. On sucess returns the number of bytes received.
 // On error a negative number shall be returned.
+//
+//     ssize_t sock_recv_all(Sock *sock, void *buf, size_t size);
+//
+// Same as sock_recv() but ensures that the specified size of bytes will be
+// received. On error a negative value is returned.
 //
 //     ssize_t sock_sendto(Sock *sock, const void *buf, size_t size, SockAddr addr)
 //
@@ -246,9 +256,11 @@ bool sock_connect(Sock *sock, SockAddr addr);
 
 // Send data through a socket
 ssize_t sock_send(Sock *sock, const void *buf, size_t size);
+bool sock_send_all(Sock *sock, const void *buf, size_t size);
 
 // Receive data from a socket
 ssize_t sock_recv(Sock *sock, void *buf, size_t size);
+ssize_t sock_recv_all(Sock *sock, void *buf, size_t size);
 
 // Send data through a socket in connectionless mode
 ssize_t sock_sendto(Sock *sock, const void *buf, size_t size, SockAddr addr);
@@ -465,6 +477,11 @@ Sock *sock_accept(Sock *sock)
         return NULL;
     }
 
+    if (sock->type != SOCK_TCP) {
+        sock->last_errno = EINVAL;
+        return NULL;
+    }
+
     Sock *res = (Sock*)malloc(sizeof(*res));
     if (res == NULL) {
         sock->last_errno = errno;
@@ -492,6 +509,11 @@ bool sock_async_accept(Sock *sock, SockThreadCallback fn, void *user_data)
 {
     if (sock == NULL) {
         return false;
+    }
+
+    if (sock->type != SOCK_TCP) {
+        sock->last_errno = EINVAL;
+        return NULL;
     }
 
     Sock *client = sock_accept(sock);
@@ -530,6 +552,11 @@ bool sock_connect(Sock *sock, SockAddr addr)
         return false;
     }
 
+    if (sock->type != SOCK_TCP) {
+        sock->last_errno = EINVAL;
+        return NULL;
+    }
+
     if (connect(sock->fd, &addr.sockaddr, addr.len) < 0) {
         sock->last_errno = errno;
         return false;
@@ -542,34 +569,131 @@ bool sock_connect(Sock *sock, SockAddr addr)
 
 ssize_t sock_send(Sock *sock, const void *buf, size_t size)
 {
-    if (sock == NULL || buf == NULL) {
+    if (sock == NULL || buf == NULL || sock->type != SOCK_TCP) {
+        if (sock != NULL) {
+            sock->last_errno = EINVAL;
+        }
         return -1;
     }
 
-    return send(sock->fd, buf, size, 0);
+    while (true) {
+        ssize_t n = send(sock->fd, buf, size, 0);
+        if (n < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+            sock->last_errno = errno;
+            return -1;
+        }
+
+        return n;
+    }
+}
+
+bool sock_send_all(Sock *sock, const void *buf, size_t size)
+{
+    if (sock == NULL || buf == NULL || sock->type != SOCK_TCP) {
+        if (sock != NULL) {
+            sock->last_errno = EINVAL;
+        }
+        return false;
+    }
+
+    const uint8_t *ptr = (uint8_t*)buf;
+    size_t remaining = size;
+
+    while (remaining > 0) {
+        ssize_t n = sock_send(sock, ptr, remaining);
+        if (n < 0) {
+            return false;
+        }
+
+        ptr += n;
+        remaining -= n;
+    }
+
+    return true;
 }
 
 ssize_t sock_recv(Sock *sock, void *buf, size_t size)
 {
-    if (sock == NULL || buf == NULL) {
+    if (sock == NULL || buf == NULL || sock->type != SOCK_TCP) {
+        if (sock != NULL) {
+            sock->last_errno = EINVAL;
+        }
         return -1;
     }
 
-    return recv(sock->fd, buf, size, 0);
+    while (true) {
+        ssize_t n = recv(sock->fd, buf, size, 0);
+        if (n < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+            sock->last_errno = errno;
+            return -1;
+        }
+        return n;
+    }
+}
+
+ssize_t sock_recv_all(Sock *sock, void *buf, size_t size)
+{
+    if (sock == NULL || buf == NULL || sock->type != SOCK_TCP) {
+        if (sock != NULL) {
+            sock->last_errno = EINVAL;
+        }
+        return -1;
+    }
+
+    uint8_t *ptr = (uint8_t*)buf;
+    size_t remaining = size;
+    ssize_t total = 0;
+
+    while (remaining > 0) {
+        ssize_t n = sock_recv(sock, ptr, remaining);
+        if (n < 0) {
+            return -1;
+        }
+        if (n == 0) {
+            return total;
+        }
+        ptr += n;
+        remaining -= n;
+        total += n;
+    }
+
+    return total;
 }
 
 ssize_t sock_sendto(Sock *sock, const void *buf, size_t size, SockAddr addr)
 {
-    if (sock == NULL || buf == NULL) {
+    if (sock == NULL || buf == NULL || sock->type != SOCK_UDP) {
+        if (sock != NULL) {
+            sock->last_errno = EINVAL;
+        }
         return -1;
     }
 
-    return sendto(sock->fd, buf, size, 0, &addr.sockaddr, addr.len);
+    while (true) {
+        ssize_t n = sendto(sock->fd, buf, size, 0, &addr.sockaddr, addr.len);
+        if (n < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+            sock->last_errno = errno;
+            return -1;
+        }
+        return n;
+    }
 }
 
 ssize_t sock_recvfrom(Sock *sock, void *buf, size_t size, SockAddr *addr)
 {
-    if (sock == NULL || buf == NULL) {
+    if (sock == NULL || buf == NULL || sock->type != SOCK_UDP) {
+        if (sock != NULL) {
+            sock->last_errno = EINVAL;
+        }
         return -1;
     }
 
@@ -584,9 +708,17 @@ ssize_t sock_recvfrom(Sock *sock, void *buf, size_t size, SockAddr *addr)
         len_ptr = &sa_len;
     }
 
-    ssize_t res = recvfrom(sock->fd, buf, size, 0, sa, len_ptr);
-    if (res < 0 || addr == NULL) {
-        return res;
+    ssize_t res = 0;
+    while (true) {
+        res = recvfrom(sock->fd, buf, size, 0, sa, len_ptr);
+        if (res < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+            sock->last_errno = errno;
+            return -1;
+        }
+        break;
     }
 
     if (addr != NULL) {
@@ -678,6 +810,8 @@ void sock__convert_addr(SockAddr *addr)
 /*
     Revision history:
 
+        1.7.2 (2025-09-17) New functions sock_recv_all() and sock_send_all();
+                           Improved error reporting.
         1.7.1 (2025-09-07) Pass NULL to getaddrinfo if port is 0 in sock_dns()
         1.7.0 (2025-09-06) Header now includes documentation; New sock_dns()
                            function; major improvements and refactoring
