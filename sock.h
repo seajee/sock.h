@@ -4,7 +4,7 @@
     #              @@@@@@                                           #
     #              @    @                                           #
     #              @====@                                           #
-    #              @    @           sock.h - v1.7.2                 #
+    #              @    @           sock.h - v1.7.3                 #
     #              @    @             MIT License                   #
     #            @@% .@ @                                           #
     #         @@     @  @    https://github.com/seajee/sock.h       #
@@ -47,7 +47,7 @@
 //
 //         A SockAddrList can be iterated like so:
 //
-//         SockAddrList list = ...;
+//         SockAddrList list = sock_dns("example.com", 0, 0, 0);
 //         for (size_t i = 0; i < list.count; ++i) {
 //             SockAddr addr = list.items[i];
 //             // Try to connect to addr or just inspect it
@@ -101,10 +101,10 @@
 // sock. On success returns the number of bytes sent. On error a negative
 // number shall be returned.
 //
-//     bool sock_send_all(Sock *sock, const void *buf, size_t size)
+//     ssize_t sock_send_all(Sock *sock, const void *buf, size_t size)
 //
-// Same as sock_send() but ensures that all of the content of buf is sent. On
-// error returns false.
+// Same as sock_send() but ensures that all of the content of buf will be
+// sent. On error a negative value is returned.
 //
 //     ssize_t sock_recv(Sock *sock, void *buf, size_t size)
 //
@@ -169,6 +169,7 @@
 #include <netdb.h>
 #include <pthread.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -256,7 +257,7 @@ bool sock_connect(Sock *sock, SockAddr addr);
 
 // Send data through a socket
 ssize_t sock_send(Sock *sock, const void *buf, size_t size);
-bool sock_send_all(Sock *sock, const void *buf, size_t size);
+ssize_t sock_send_all(Sock *sock, const void *buf, size_t size);
 
 // Receive data from a socket
 ssize_t sock_recv(Sock *sock, void *buf, size_t size);
@@ -590,29 +591,29 @@ ssize_t sock_send(Sock *sock, const void *buf, size_t size)
     }
 }
 
-bool sock_send_all(Sock *sock, const void *buf, size_t size)
+ssize_t sock_send_all(Sock *sock, const void *buf, size_t size)
 {
     if (sock == NULL || buf == NULL || sock->type != SOCK_TCP) {
         if (sock != NULL) {
             sock->last_errno = EINVAL;
         }
-        return false;
+        return -1;
     }
 
-    const uint8_t *ptr = (uint8_t*)buf;
+    uint8_t *ptr = (uint8_t*)buf;
     size_t remaining = size;
 
     while (remaining > 0) {
         ssize_t n = sock_send(sock, ptr, remaining);
         if (n < 0) {
-            return false;
+            return -1;
         }
 
         ptr += n;
         remaining -= n;
     }
 
-    return true;
+    return size;
 }
 
 ssize_t sock_recv(Sock *sock, void *buf, size_t size)
@@ -737,6 +738,15 @@ void sock_close(Sock *sock)
         return;
     }
 
+    shutdown(sock->fd, SHUT_WR);
+    uint8_t buffer[1024];
+    while (true) {
+        ssize_t n = sock_recv(sock, buffer, sizeof(buffer));
+        if (n <= 0) {
+            break;
+        }
+    }
+
     close(sock->fd);
     free(sock);
 }
@@ -810,6 +820,8 @@ void sock__convert_addr(SockAddr *addr)
 /*
     Revision history:
 
+        1.7.3 (2025-09-20) Changed sock_send_all() signature; drain buffers on
+                           sock_close() to prevent data loss
         1.7.2 (2025-09-17) New functions sock_recv_all() and sock_send_all();
                            Improved error reporting.
         1.7.1 (2025-09-07) Pass NULL to getaddrinfo if port is 0 in sock_dns()
