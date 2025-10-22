@@ -214,10 +214,10 @@ typedef enum {
 } SockType;
 
 typedef struct {
-    SockType type;    // Socket type
-    SockAddr addr;    // Socket address
-    int fd;           // File descriptor
-    int last_errno;  // Last error about this socket
+    SockType type;  // Socket type
+    SockAddr addr;  // Socket address
+    int fd;         // File descriptor
+    int last_errno; // Last error about this socket
 } Sock;
 
 typedef void (*SockThreadCallback)(Sock *sock, void *user_data);
